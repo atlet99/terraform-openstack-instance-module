@@ -46,15 +46,24 @@ variable "ports" {
     name               = string
     network_id         = string
     subnet_id          = string
-    admin_state_up     = optional(bool)
-    security_group_ids = optional(list(string))
+    admin_state_up     = optional(bool, true)
+    security_group_ids = optional(list(string), [])
     ip_address         = optional(string)
-    port_security      = optional(bool)
+    port_security      = optional(bool, true)
+    no_security_groups = optional(bool, false)
+    description        = optional(string)
+    dns_name           = optional(string)
+    qos_policy_id      = optional(string)
     allowed_address_pairs = optional(list(object({
       ip_address  = string
       mac_address = optional(string)
     })), [])
-    tags = optional(list(string))
+    extra_dhcp_options = optional(list(object({
+      name       = string
+      value      = string
+      ip_version = optional(number, 4)
+    })), [])
+    tags = optional(list(string), [])
   }))
   default = [
     {
@@ -65,7 +74,12 @@ variable "ports" {
       security_group_ids    = []
       ip_address            = null
       port_security         = true
+      no_security_groups    = false
+      description           = null
+      dns_name              = null
+      qos_policy_id         = null
       allowed_address_pairs = []
+      extra_dhcp_options    = []
       tags                  = []
     }
   ]
@@ -142,4 +156,115 @@ variable "availability_zone" {
   type        = string
   default     = ""
   description = "AZ where volume's available."
+}
+
+variable "power_state" {
+  type        = string
+  default     = "active"
+  description = "The VM state. Only 'active', 'shutoff', 'paused' and 'shelved_offloaded' are supported values."
+}
+
+variable "force_delete" {
+  type        = bool
+  default     = false
+  description = "Whether to force the OpenStack instance to be forcefully deleted."
+}
+
+variable "stop_before_destroy" {
+  type        = bool
+  default     = false
+  description = "Whether to try stop instance gracefully before destroying it."
+}
+
+variable "block_device_description" {
+  type        = string
+  default     = null
+  description = "The description of the block device."
+}
+
+variable "block_device_metadata" {
+  type        = map(string)
+  default     = {}
+  description = "Metadata key/value pairs to associate with the volume."
+}
+
+variable "snapshot_id" {
+  type        = string
+  default     = null
+  description = "The snapshot ID from which to create the volume."
+}
+
+variable "source_vol_id" {
+  type        = string
+  default     = null
+  description = "The volume ID from which to create the volume."
+}
+
+variable "backup_id" {
+  type        = string
+  default     = null
+  description = "The backup ID from which to create the volume."
+}
+
+variable "block_device_scheduler_hints" {
+  type        = any
+  default     = null
+  description = "Provide the Cinder scheduler with hints on where to instantiate a volume."
+}
+
+variable "fip_description" {
+  type        = string
+  default     = null
+  description = "Human-readable description for the floating IP."
+}
+
+variable "fip_dns_name" {
+  type        = string
+  default     = null
+  description = "The floating IP DNS name."
+}
+
+variable "fip_dns_domain" {
+  type        = string
+  default     = null
+  description = "The floating IP DNS domain."
+}
+
+variable "instance_availability_zone" {
+  type        = string
+  default     = null
+  description = "The availability zone in which to create the server."
+}
+
+variable "vendor_options" {
+  type = object({
+    ignore_resize_confirmation  = optional(bool, false)
+    detach_ports_before_destroy = optional(bool, false)
+  })
+  default     = null
+  description = "Vendor-specific options for the instance."
+}
+
+variable "personalities" {
+  type = list(object({
+    file    = string
+    content = string
+  }))
+  default     = []
+  description = "A list of files to inject into the instance at boot time."
+}
+
+variable "extra_volumes" {
+  type = list(object({
+    volume_id = string
+    device    = optional(string)
+  }))
+  default     = []
+  description = "A list of additional volumes to attach to the instance."
+}
+
+variable "floating_ip_port_index" {
+  type        = number
+  default     = 0
+  description = "The index of the port to associate the floating IP with (0 for main port, 1+ for additional ports)."
 }

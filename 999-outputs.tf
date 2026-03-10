@@ -47,9 +47,11 @@ output "instance_info" {
 # Output for the primary port details
 output "primary_port" {
   value = {
-    id         = openstack_networking_port_v2.main_port.id
-    name       = openstack_networking_port_v2.main_port.name
-    private_ip = openstack_networking_port_v2.main_port.fixed_ip[0].ip_address
+    id          = openstack_networking_port_v2.main_port.id
+    name        = openstack_networking_port_v2.main_port.name
+    private_ip  = openstack_networking_port_v2.main_port.fixed_ip[0].ip_address
+    mac_address = openstack_networking_port_v2.main_port.mac_address
+    description = openstack_networking_port_v2.main_port.description
   }
   description = "Details of the primary port attached to the instance."
 }
@@ -58,9 +60,11 @@ output "primary_port" {
 output "additional_ports" {
   value = [
     for port in openstack_networking_port_v2.additional_ports : {
-      id         = port.id
-      name       = port.name
-      private_ip = port.fixed_ip[0].ip_address
+      id          = port.id
+      name        = port.name
+      private_ip  = port.fixed_ip[0].ip_address
+      mac_address = port.mac_address
+      description = port.description
     }
   ]
   description = "Details of additional ports attached to the instance."
@@ -69,5 +73,29 @@ output "additional_ports" {
 # Output for attached floating IPs
 output "attached_floating_ips" {
   value       = [for assoc in openstack_networking_floatingip_associate_v2.ipa : assoc.floating_ip]
-  description = "List of floating IPs attached to additional ports."
+  description = "List of floating IPs associated with the instance ports."
+}
+
+# Output for ID of the root volume
+output "root_volume_id" {
+  value       = openstack_blockstorage_volume_v3.volume_os.id
+  description = "The ID of the instance boot volume."
+}
+
+# Output for extra volume attachments
+output "extra_volume_ids" {
+  value       = var.extra_volumes[*].volume_id
+  description = "List of IDs for additional volumes attached to the instance."
+}
+
+# Output for instance metadata
+output "instance_metadata" {
+  value       = openstack_compute_instance_v2.instance.metadata
+  description = "The metadata associated with the instance."
+}
+
+# Output for availability zone
+output "instance_availability_zone" {
+  value       = openstack_compute_instance_v2.instance.availability_zone
+  description = "The availability zone of the instance."
 }

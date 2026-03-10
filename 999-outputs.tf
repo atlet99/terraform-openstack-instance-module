@@ -1,82 +1,89 @@
-# Output for instance IDs as a flat list
+# Output for instance IDs
 output "instance_ids" {
   value       = [openstack_compute_instance_v2.instance.id]
   description = "Flat list of instance IDs."
 }
 
-# Output for private IPs as a flat list
+# Consolidated list of all private IPs (boot + hot ports)
 output "private_ips" {
   value = concat(
-    [openstack_networking_port_v2.main_port.fixed_ip[0].ip_address],
-    [for port in openstack_networking_port_v2.additional_ports : port.fixed_ip[0].ip_address]
+    [for port in openstack_networking_port_v2.boot_ports : port.fixed_ip[0].ip_address],
+    [for port in openstack_networking_port_v2.hot_ports : port.fixed_ip[0].ip_address]
   )
-  description = "Flat list of private IP addresses for all ports (main and additional)."
+  description = "Flat list of the first private IP address for all ports."
 }
 
-# Output for floating IPs as a flat list
+# All fixed IPs (all subnets, all ports)
+output "all_fixed_ips" {
+  value = concat(
+    flatten([for port in openstack_networking_port_v2.boot_ports : port.fixed_ip[*].ip_address]),
+    flatten([for port in openstack_networking_port_v2.hot_ports : port.fixed_ip[*].ip_address])
+  )
+  description = "Full list of all fixed IP addresses on all ports."
+}
+
+# Output for floating IPs
 output "floating_ips" {
   value       = length(openstack_networking_floatingip_v2.ip) > 0 ? openstack_networking_floatingip_v2.ip[*].address : []
-  description = "Flat list of floating IP addresses, if any."
+  description = "Flat list of floating IP addresses."
 }
 
-# Output for ports with details, including MAC addresses
+# Detailed list of all ports
 output "instance_info" {
   value = concat(
     [
-      {
-        id          = openstack_networking_port_v2.main_port.id
-        name        = openstack_networking_port_v2.main_port.name
-        tags        = openstack_networking_port_v2.main_port.tags
-        private_ip  = openstack_networking_port_v2.main_port.fixed_ip[0].ip_address
-        mac_address = openstack_networking_port_v2.main_port.mac_address
+      for port in openstack_networking_port_v2.boot_ports : {
+        id          = port.id
+        name        = port.name
+        type        = "boot"
+        tags        = port.tags
+        fixed_ips   = port.fixed_ip[*].ip_address
+        mac_address = port.mac_address
+        description = port.description
+        binding     = port.binding
       }
     ],
     [
-      for port in length(openstack_networking_port_v2.additional_ports) > 0 ? openstack_networking_port_v2.additional_ports : [] : {
+      for port in openstack_networking_port_v2.hot_ports : {
         id          = port.id
         name        = port.name
+        type        = "hot"
         tags        = port.tags
-        private_ip  = port.fixed_ip[0].ip_address
+        fixed_ips   = port.fixed_ip[*].ip_address
         mac_address = port.mac_address
+        description = port.description
+        binding     = port.binding
       }
     ]
   )
-  description = "Flat list of ports with tags, names, private IPs, and MAC addresses for the instance."
+  description = "Detailed list of all ports (boot and hot) with tags, IPs, MAC addresses and binding info."
 }
 
-# Output for the primary port details
-output "primary_port" {
-  value = {
-    id          = openstack_networking_port_v2.main_port.id
-    name        = openstack_networking_port_v2.main_port.name
-    private_ip  = openstack_networking_port_v2.main_port.fixed_ip[0].ip_address
-    mac_address = openstack_networking_port_v2.main_port.mac_address
-    description = openstack_networking_port_v2.main_port.description
-  }
-  description = "Details of the primary port attached to the instance."
-}
-
-# Output for additional ports
-output "additional_ports" {
+# Output for boot ports only
+output "boot_ports" {
   value = [
-    for port in openstack_networking_port_v2.additional_ports : {
-      id          = port.id
-      name        = port.name
-      private_ip  = port.fixed_ip[0].ip_address
-      mac_address = port.mac_address
-      description = port.description
+    for port in openstack_networking_port_v2.boot_ports : {
+      id        = port.id
+      name      = port.name
+      fixed_ips = port.fixed_ip[*].ip_address
     }
   ]
-  description = "Details of additional ports attached to the instance."
+  description = "Details of ports attached at boot time."
 }
 
-# Output for attached floating IPs
-output "attached_floating_ips" {
-  value       = [for assoc in openstack_networking_floatingip_associate_v2.ipa : assoc.floating_ip]
-  description = "List of floating IPs associated with the instance ports."
+# Output for hot ports only
+output "hot_ports" {
+  value = [
+    for port in openstack_networking_port_v2.hot_ports : {
+      id        = port.id
+      name      = port.name
+      fixed_ips = port.fixed_ip[*].ip_address
+    }
+  ]
+  description = "Details of ports attached after boot (hot-plug)."
 }
 
-# Output for ID of the root volume
+# Output for the root volume
 output "root_volume_id" {
   value       = openstack_blockstorage_volume_v3.volume_os.id
   description = "The ID of the instance boot volume."
@@ -94,8 +101,52 @@ output "instance_metadata" {
   description = "The metadata associated with the instance."
 }
 
-# Output for availability zone
-output "instance_availability_zone" {
-  value       = openstack_compute_instance_v2.instance.availability_zone
-  description = "The availability zone of the instance."
+# Output for availability zone info
+output "availability_info" {
+  value = {
+    zone       = openstack_compute_instance_v2.instance.availability_zone
+    zone_hints = openstack_compute_instance_v2.instance.availability_zone_hints
+  }
+  description = "Availability zone and hints for the instance."
+}
+
+# Sensitive admin password
+output "admin_pass" {
+  value       = openstack_compute_instance_v2.instance.admin_pass
+  sensitive   = true
+  description = "The administrative password assigned to the server."
+}
+
+# Access IPs
+output "access_ip_v4" {
+  value       = openstack_compute_instance_v2.instance.access_ip_v4
+  description = "The first detected IPv4 address of the instance."
+}
+
+output "access_ip_v6" {
+  value       = openstack_compute_instance_v2.instance.access_ip_v6
+  description = "The first detected IPv6 address of the instance."
+}
+
+# All metadata (exported by OpenStack)
+output "all_metadata" {
+  value       = openstack_compute_instance_v2.instance.all_metadata
+  description = "All metadata key/value pairs associated with the instance."
+}
+
+# All tags (exported by OpenStack)
+output "all_tags" {
+  value       = openstack_compute_instance_v2.instance.all_tags
+  description = "All tags associated with the instance."
+}
+
+# Timestamps
+output "created_at" {
+  value       = openstack_compute_instance_v2.instance.created
+  description = "The creation time of the instance."
+}
+
+output "updated_at" {
+  value       = openstack_compute_instance_v2.instance.updated
+  description = "The time when the instance was last updated."
 }

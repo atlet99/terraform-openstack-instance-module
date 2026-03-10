@@ -12,11 +12,15 @@ variable "user_data" {
 }
 
 variable "image_id" {
-  type = string
+  type        = string
+  default     = null
+  description = "The image's id referenced in openstack"
+}
 
-  description = <<EOF
-The image's id referenced in openstack
-EOF
+variable "image_name" {
+  type        = string
+  default     = null
+  description = "The image's name referenced in openstack"
 }
 
 variable "name" {
@@ -28,9 +32,14 @@ EOF
 
 variable "flavor_name" {
   type        = string
-  description = <<EOF
-Instance's flavor name referenced in openstack
-EOF
+  default     = null
+  description = "Instance's flavor name referenced in openstack"
+}
+
+variable "flavor_id" {
+  type        = string
+  default     = null
+  description = "Instance's flavor id referenced in openstack"
 }
 
 variable "public_ip_network" {
@@ -45,15 +54,21 @@ variable "ports" {
   type = list(object({
     name               = string
     network_id         = string
-    subnet_id          = string
+    subnet_id          = optional(string)
     admin_state_up     = optional(bool, true)
     security_group_ids = optional(list(string), [])
-    ip_address         = optional(string)
+    fixed_ips = optional(list(object({
+      subnet_id  = optional(string)
+      ip_address = optional(string)
+    })), [])
     port_security      = optional(bool, true)
     no_security_groups = optional(bool, false)
     description        = optional(string)
     dns_name           = optional(string)
     qos_policy_id      = optional(string)
+    mac_address        = optional(string)
+    no_fixed_ip        = optional(bool, false)
+    value_specs        = optional(map(string), {})
     allowed_address_pairs = optional(list(object({
       ip_address  = string
       mac_address = optional(string)
@@ -63,27 +78,54 @@ variable "ports" {
       value      = string
       ip_version = optional(number, 4)
     })), [])
+    binding = optional(object({
+      host_id   = optional(string)
+      vnic_type = optional(string)
+      profile   = optional(string)
+    }))
     tags = optional(list(string), [])
   }))
-  default = [
-    {
-      name                  = ""
-      network_id            = ""
-      subnet_id             = ""
-      admin_state_up        = true
-      security_group_ids    = []
-      ip_address            = null
-      port_security         = true
-      no_security_groups    = false
-      description           = null
-      dns_name              = null
-      qos_policy_id         = null
-      allowed_address_pairs = []
-      extra_dhcp_options    = []
-      tags                  = []
-    }
-  ]
-  description = "The ports list, at least 1 port is required"
+  default     = []
+  description = "Ports attached at boot time (causes replacement on change). If empty, OpenStack will create a default port."
+}
+
+variable "hot_ports" {
+  type = list(object({
+    name               = string
+    network_id         = string
+    subnet_id          = optional(string)
+    admin_state_up     = optional(bool, true)
+    security_group_ids = optional(list(string), [])
+    fixed_ips = optional(list(object({
+      subnet_id  = optional(string)
+      ip_address = optional(string)
+    })), [])
+    port_security      = optional(bool, true)
+    no_security_groups = optional(bool, false)
+    description        = optional(string)
+    dns_name           = optional(string)
+    qos_policy_id      = optional(string)
+    mac_address        = optional(string)
+    no_fixed_ip        = optional(bool, false)
+    value_specs        = optional(map(string), {})
+    allowed_address_pairs = optional(list(object({
+      ip_address  = string
+      mac_address = optional(string)
+    })), [])
+    extra_dhcp_options = optional(list(object({
+      name       = string
+      value      = string
+      ip_version = optional(number, 4)
+    })), [])
+    binding = optional(object({
+      host_id   = optional(string)
+      vnic_type = optional(string)
+      profile   = optional(string)
+    }))
+    tags = optional(list(string), [])
+  }))
+  default     = []
+  description = "Ports attached after instance creation (hot-plug). Does not cause replacement."
 }
 
 variable "block_device_volume_size" {
@@ -108,53 +150,27 @@ variable "volume_type" {
   default     = "ceph-ssd"
 }
 
-variable "server_groups" {
-  type        = list(string)
-  description = <<EOF
-List of server group id
-EOF
-  default     = []
-}
-
 variable "tags" {
   type        = list(string)
-  default     = null
+  default     = []
   description = "The instances tags"
 }
 
-# Added all information about metadata;
-
 variable "metadata" {
   type        = map(string)
-  description = <<-EOF
-  Metadata for the OpenStack instance, used for categorization and identification of the service across environments and projects:
-  - environment: Specifies the deployment environment (e.g., "dev", "staging", "prod", "infra") to indicate where the instance is used.
-  - project: Defines the project name or identifier associated with this instance (e.g., "tesla"), useful for organizing and filtering resources within larger environments.
-  - service_type: Describes the type of service provided by this instance (e.g., "runner", "database", "web"), helping to classify the role of the instance in the architecture.
-  - service_name: A unique name for the specific service this instance runs (e.g., "tesla_runner_infra"), enabling more granular tracking and management of resources.
-  - service_role: Defines the role of the instance within the service (e.g., "master", "worker", "backup"), useful for distributed or clustered services with distinct roles.
-  These metadata fields allow for more effective resource organization, monitoring, and automated management within OpenStack and other third-party integrations.
-  EOF
-  default = {
-    environment  = null
-    project      = null
-    service_type = null
-    service_name = null
-    service_role = null
-  }
+  description = "Metadata for the OpenStack instance."
+  default     = {}
 }
 
-# Added additional region info for volume
 variable "region" {
   type        = string
-  default     = ""
+  default     = null
   description = "Region where volume's located."
 }
 
-# Added additional AZ info for volume
 variable "availability_zone" {
   type        = string
-  default     = ""
+  default     = null
   description = "AZ where volume's available."
 }
 
@@ -236,6 +252,12 @@ variable "instance_availability_zone" {
   description = "The availability zone in which to create the server."
 }
 
+variable "instance_availability_zone_hints" {
+  type        = string
+  default     = null
+  description = "The availability zone hints in which to create the server."
+}
+
 variable "vendor_options" {
   type = object({
     ignore_resize_confirmation  = optional(bool, false)
@@ -266,5 +288,78 @@ variable "extra_volumes" {
 variable "floating_ip_port_index" {
   type        = number
   default     = 0
-  description = "The index of the port to associate the floating IP with (0 for main port, 1+ for additional ports)."
+  description = "The index of the port to associate the floating IP with (0 for first boot-port, then hot-ports)."
+}
+
+variable "config_drive" {
+  type        = bool
+  default     = true
+  description = "Whether to use the config_drive feature to configure the instance."
+}
+
+variable "admin_pass" {
+  type        = string
+  default     = null
+  sensitive   = true
+  description = "The administrative password to assign to the server."
+}
+
+variable "scheduler_hints" {
+  type        = any
+  default     = null
+  description = "Provide the Nova scheduler with hints on where to instantiate an instance."
+}
+
+variable "hypervisor_hostname" {
+  type        = string
+  default     = null
+  description = "Specifies the exact hypervisor hostname on which to create the instance."
+}
+
+variable "enable_online_resize" {
+  type        = bool
+  default     = true
+  description = "When this option is set it allows extending attached volumes."
+}
+
+variable "consistency_group_id" {
+  type        = string
+  default     = null
+  description = "The consistency group to place the volume in."
+}
+
+variable "source_replica" {
+  type        = string
+  default     = null
+  description = "The volume ID to replicate with."
+}
+
+variable "volume_retype_policy" {
+  type        = string
+  default     = null
+  description = "Migration policy when changing volume_type. 'never' or 'on-demand'."
+}
+
+variable "block_device_guest_format" {
+  type        = string
+  default     = null
+  description = "Specifies the guest server disk file system format, such as ext4 or swap."
+}
+
+variable "block_device_device_type" {
+  type        = string
+  default     = null
+  description = "The low-level device type that will be used (e.g., cdrom)."
+}
+
+variable "block_device_disk_bus" {
+  type        = string
+  default     = null
+  description = "The low-level disk bus that will be used (e.g., virtio, scsi)."
+}
+
+variable "network_mode" {
+  type        = string
+  default     = null
+  description = "Special string for 'network' option: 'auto' or 'none'. Conflicts with 'ports'."
 }

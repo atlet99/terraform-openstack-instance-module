@@ -38,27 +38,40 @@ module "complete_instance" {
     {
       name               = "primary-port"
       network_id         = var.network_id
-      subnet_id          = var.subnet_id
       admin_state_up     = true
       security_group_ids = var.security_group_ids
       description        = "Primary application port"
-    },
+      fixed_ips = [
+        {
+          subnet_id = var.subnet_id
+        }
+      ]
+    }
+  ]
+
+  hot_ports = [
     {
-      name               = "admin-port"
+      name               = "dynamic-admin-port"
       network_id         = var.network_id
-      subnet_id          = var.subnet_id
       no_security_groups = true
-      description        = "Administration port without security groups"
-      dns_name           = "admin-vm"
+      description        = "Administration port attached after boot"
+      fixed_ips = [
+        {
+          subnet_id = var.subnet_id
+        }
+      ]
     }
   ]
 
   floating_ip_port_index = 0 # Attach FIP to primary-port
+  admin_pass             = "SuperSecretPassword123!"
 
   block_device_volume_size           = 40
   block_device_delete_on_termination = true
   volume_type                        = "ceph-ssd"
   block_device_description           = "Root volume for complete example"
+  enable_online_resize               = true
+  block_device_guest_format          = "ext4"
 
   fip_description = "Public access IP"
 }

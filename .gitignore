@@ -1,7 +1,13 @@
-### Example user template
-
-# IntelliJ project files
+### Global ignored files
+.terraform
+.terraform.lock.hcl
+!.terraform-docs.yml
+!.tflint.hcl
 .idea
+.vscode
 *.iml
 out
 gen
+*.tfstate
+*.tfstate.backup
+.tfvars

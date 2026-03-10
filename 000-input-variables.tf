@@ -130,22 +130,6 @@ variable "metadata" {
   }
 }
 
-# Variable for designating the primary port index
-variable "primary_port_index" {
-  type        = number
-  description = <<EOF
-The index of the primary port in the 'ports' list. Default is 0 (the first port).
-EOF
-  default     = 0
-}
-
-# Variable to enable floating IP assignment for additional ports
-variable "attach_floating_ip" {
-  type        = bool
-  description = "Flag to indicate if floating IPs should be attached to the additional ports."
-  default     = true
-}
-
 # Added additional region info for volume
 variable "region" {
   type        = string

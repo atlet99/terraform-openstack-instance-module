@@ -1,8 +1,9 @@
 module "complete_instance" {
   source = "../../"
 
-  name          = "complete-vm"
-  image_id      = var.image_id
+  name = "complete-vm"
+  # image_id      = var.image_id
+  image_name    = "Ubuntu 22.04 LTS" # Demonstrating image selection by name
   flavor_name   = var.flavor_name
   key_pair_name = var.key_pair_name
 
@@ -72,6 +73,9 @@ module "complete_instance" {
   block_device_description           = "Root volume for complete example"
   enable_online_resize               = true
   block_device_guest_format          = "ext4"
+  block_device_disk_bus              = "virtio"
+
+  hypervisor_hostname = "compute-01.example.com"
 
   fip_description = "Public access IP"
 }

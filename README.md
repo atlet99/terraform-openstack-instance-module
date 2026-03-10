@@ -11,7 +11,7 @@ _This project aims to create a module to deploy instance(s) on openstack provide
 ```hcl
 module "instance-module" {
   source  = "atlet99/instance-module/openstack"
-  version = "1.0.2"
+  version = "1.0.3"
   # insert the 4 required variables here
 }
 ```
@@ -21,7 +21,7 @@ module "instance-module" {
 ```terraform
 module "test_instance_simple" {
 	source  = "atlet99/instance-module/openstack"
-	version = "1.0.2"
+	version = "1.0.3"
  
 	name = "instance"
 	flavor_name = "m1.xs" 

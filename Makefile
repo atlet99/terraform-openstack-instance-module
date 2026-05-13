@@ -1,7 +1,7 @@
 .PHONY: \
 	help check-deps clean \
 	fmt fmt-check init validate validate-matrix check-examples \
-	lint docs \
+	lint docs docs-check \
 	check-all-single check-all-matrix check-all \
 	changelog changelog-preview release tag
 
@@ -37,6 +37,7 @@ help: ## Show grouped help
 	@echo "Quality"
 	@echo "  lint               Run tflint"
 	@echo "  docs               Generate README docs with terraform-docs"
+	@echo "  docs-check         Verify README is in sync with terraform-docs"
 	@echo "  check-all-single   Run checks in active Terraform version"
 	@echo "  check-all-matrix   Run checks across Terraform version matrix"
 	@echo "  check-all          Alias for check-all-matrix"
@@ -91,9 +92,18 @@ lint: check-deps ## Run tflint
 docs: check-deps ## Generate documentation with terraform-docs
 	terraform-docs .
 
-check-all-single: fmt validate lint docs ## Run checks in active Terraform version
+docs-check: check-deps ## Verify README is in sync with terraform-docs
+	@before="$$(shasum README.md | awk '{print $$1}')"; \
+	terraform-docs .; \
+	after="$$(shasum README.md | awk '{print $$1}')"; \
+	if [ "$$before" != "$$after" ]; then \
+		echo "ERROR: README.md is not up to date. Run 'make docs' and commit the changes."; \
+		exit 1; \
+	fi
 
-check-all-matrix: fmt validate-matrix check-examples lint docs ## Run checks across Terraform matrix
+check-all-single: fmt validate lint docs-check ## Run checks in active Terraform version
+
+check-all-matrix: fmt validate-matrix check-examples lint docs-check ## Run checks across Terraform matrix
 
 check-all: check-all-matrix ## Alias for check-all-matrix
 

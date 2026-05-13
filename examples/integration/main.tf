@@ -70,5 +70,5 @@ module "extra_volume" {
   name        = "integration-data"
   size        = 5
   volume_type = "ceph-ssd"
-  instance_id = module.instance.instance_ids[0]
+  instance_id = module.instance.instance_id
 }

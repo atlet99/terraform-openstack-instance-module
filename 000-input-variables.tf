@@ -266,7 +266,13 @@ variable "backup_id" {
 }
 
 variable "block_device_scheduler_hints" {
-  type        = any
+  type = object({
+    different_host        = optional(list(string))
+    same_host             = optional(list(string))
+    query                 = optional(string)
+    local_to_instance     = optional(string)
+    additional_properties = optional(map(any))
+  })
   default     = null
   description = "Provide the Cinder scheduler with hints on where to instantiate a volume."
 }
@@ -370,7 +376,16 @@ variable "admin_pass" {
 }
 
 variable "scheduler_hints" {
-  type        = any
+  type = object({
+    group                 = optional(string)
+    different_host        = optional(list(string))
+    same_host             = optional(list(string))
+    query                 = optional(list(string))
+    target_cell           = optional(string)
+    different_cell        = optional(list(string))
+    build_near_host_ip    = optional(string)
+    additional_properties = optional(map(any))
+  })
   default     = null
   description = "Provide the Nova scheduler with hints on where to instantiate an instance."
 }

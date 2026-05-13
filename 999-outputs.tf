@@ -76,6 +76,11 @@ output "boot_ports" {
   description = "Details of ports attached at boot time."
 }
 
+output "boot_port_ids" {
+  value       = openstack_networking_port_v2.boot_ports[*].id
+  description = "IDs of ports attached at boot time."
+}
+
 # Output for hot ports only
 output "hot_ports" {
   value = [
@@ -88,6 +93,11 @@ output "hot_ports" {
   description = "Details of ports attached after boot (hot-plug)."
 }
 
+output "hot_port_ids" {
+  value       = openstack_networking_port_v2.hot_ports[*].id
+  description = "IDs of ports attached after boot (hot-plug)."
+}
+
 # Output for the root volume
 output "root_volume_id" {
   value       = openstack_blockstorage_volume_v3.volume_os.id
@@ -96,8 +106,13 @@ output "root_volume_id" {
 
 # Output for extra volume attachments
 output "extra_volume_ids" {
-  value       = var.extra_volumes[*].volume_id
-  description = "List of IDs for additional volumes attached to the instance."
+  value       = openstack_compute_volume_attach_v2.extra_volumes[*].volume_id
+  description = "List of attached additional volume IDs."
+}
+
+output "extra_volume_attachment_ids" {
+  value       = openstack_compute_volume_attach_v2.extra_volumes[*].id
+  description = "List of volume attachment IDs for additional volumes."
 }
 
 # Output for instance metadata

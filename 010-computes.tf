@@ -1,3 +1,30 @@
+locals {
+  boot_image_id = var.image_id != null ? var.image_id : (var.image_name != null ? data.openstack_images_image_v2.boot_image_by_name[0].id : null)
+
+  boot_port_no_fixed_ip = [
+    for p in var.ports : (
+      p.no_fixed_ip == true
+      && length(p.fixed_ips) == 0
+      && p.subnet_id == null
+    ) ? true : null
+  ]
+
+  hot_port_no_fixed_ip = [
+    for p in var.hot_ports : (
+      p.no_fixed_ip == true
+      && length(p.fixed_ips) == 0
+      && p.subnet_id == null
+    ) ? true : null
+  ]
+
+  total_ports = length(var.ports) + length(var.hot_ports)
+  fip_port_id = var.floating_ip_port_index < length(openstack_networking_port_v2.boot_ports) ? (
+    openstack_networking_port_v2.boot_ports[var.floating_ip_port_index].id
+    ) : (
+    length(openstack_networking_port_v2.hot_ports) > 0 ? openstack_networking_port_v2.hot_ports[var.floating_ip_port_index - length(openstack_networking_port_v2.boot_ports)].id : null
+  )
+}
+
 data "openstack_images_image_v2" "boot_image_by_name" {
   count = var.image_id == null && var.image_name != null ? 1 : 0
   name  = var.image_name
@@ -8,7 +35,7 @@ resource "openstack_blockstorage_volume_v3" "volume_os" {
   name                 = var.name
   size                 = var.block_device_volume_size
   volume_type          = var.volume_type
-  image_id             = var.image_id != null ? var.image_id : (var.image_name != null ? data.openstack_images_image_v2.boot_image_by_name[0].id : null)
+  image_id             = local.boot_image_id
   enable_online_resize = var.enable_online_resize
   region               = var.region == null ? null : var.region
   availability_zone    = var.availability_zone == null ? null : var.availability_zone
@@ -53,12 +80,8 @@ resource "openstack_networking_port_v2" "boot_ports" {
   dns_name           = var.ports[count.index].dns_name
   qos_policy_id      = var.ports[count.index].qos_policy_id
   mac_address        = var.ports[count.index].mac_address
-  no_fixed_ip = (
-    var.ports[count.index].no_fixed_ip == true
-    && length(var.ports[count.index].fixed_ips) == 0
-    && var.ports[count.index].subnet_id == null
-  ) ? true : null
-  value_specs = var.ports[count.index].value_specs
+  no_fixed_ip        = local.boot_port_no_fixed_ip[count.index]
+  value_specs        = var.ports[count.index].value_specs
 
   dynamic "fixed_ip" {
     for_each = var.ports[count.index].fixed_ips
@@ -119,12 +142,8 @@ resource "openstack_networking_port_v2" "hot_ports" {
   dns_name           = var.hot_ports[count.index].dns_name
   qos_policy_id      = var.hot_ports[count.index].qos_policy_id
   mac_address        = var.hot_ports[count.index].mac_address
-  no_fixed_ip = (
-    var.hot_ports[count.index].no_fixed_ip == true
-    && length(var.hot_ports[count.index].fixed_ips) == 0
-    && var.hot_ports[count.index].subnet_id == null
-  ) ? true : null
-  value_specs = var.hot_ports[count.index].value_specs
+  no_fixed_ip        = local.hot_port_no_fixed_ip[count.index]
+  value_specs        = var.hot_ports[count.index].value_specs
 
   dynamic "fixed_ip" {
     for_each = var.hot_ports[count.index].fixed_ips
@@ -217,6 +236,7 @@ resource "openstack_compute_instance_v2" "instance" {
       same_host             = lookup(scheduler_hints.value, "same_host", null)
       query                 = lookup(scheduler_hints.value, "query", null)
       target_cell           = lookup(scheduler_hints.value, "target_cell", null)
+      different_cell        = lookup(scheduler_hints.value, "different_cell", null)
       build_near_host_ip    = lookup(scheduler_hints.value, "build_near_host_ip", null)
       additional_properties = lookup(scheduler_hints.value, "additional_properties", null)
     }
@@ -298,20 +318,16 @@ resource "openstack_networking_floatingip_v2" "ip" {
 resource "openstack_networking_floatingip_associate_v2" "ipa" {
   count       = var.public_ip_network == null ? 0 : 1
   floating_ip = openstack_networking_floatingip_v2.ip[count.index].address
-  port_id = var.floating_ip_port_index < length(openstack_networking_port_v2.boot_ports) ? (
-    openstack_networking_port_v2.boot_ports[var.floating_ip_port_index].id
-    ) : (
-    length(openstack_networking_port_v2.hot_ports) > 0 ? openstack_networking_port_v2.hot_ports[var.floating_ip_port_index - length(openstack_networking_port_v2.boot_ports)].id : null
-  )
+  port_id     = local.fip_port_id
 
   lifecycle {
     precondition {
-      condition     = length(var.ports) + length(var.hot_ports) > 0
+      condition     = local.total_ports > 0
       error_message = "When public_ip_network is set, define at least one port in var.ports or var.hot_ports."
     }
 
     precondition {
-      condition     = var.floating_ip_port_index < length(var.ports) + length(var.hot_ports)
+      condition     = var.floating_ip_port_index < local.total_ports
       error_message = "floating_ip_port_index is out of range for the combined ports list (boot ports first, then hot ports)."
     }
   }

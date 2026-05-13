@@ -9,7 +9,7 @@ output "security_group_id" {
 }
 
 output "instance_id" {
-  value       = module.instance.instance_ids[0]
+  value       = module.instance.instance_id
   description = "Instance ID created by instance module."
 }
 

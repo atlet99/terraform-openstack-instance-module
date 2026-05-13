@@ -84,7 +84,7 @@ module "test_instance_simple" {
 | <a name="input_block_device_disk_bus"></a> [block\_device\_disk\_bus](#input\_block\_device\_disk\_bus) | The low-level disk bus that will be used (e.g., virtio, scsi). | `string` | `null` | no |
 | <a name="input_block_device_guest_format"></a> [block\_device\_guest\_format](#input\_block\_device\_guest\_format) | Specifies the guest server disk file system format, such as ext4 or swap. | `string` | `null` | no |
 | <a name="input_block_device_metadata"></a> [block\_device\_metadata](#input\_block\_device\_metadata) | Metadata key/value pairs to associate with the volume. | `map(string)` | `{}` | no |
-| <a name="input_block_device_scheduler_hints"></a> [block\_device\_scheduler\_hints](#input\_block\_device\_scheduler\_hints) | Provide the Cinder scheduler with hints on where to instantiate a volume. | `any` | `null` | no |
+| <a name="input_block_device_scheduler_hints"></a> [block\_device\_scheduler\_hints](#input\_block\_device\_scheduler\_hints) | Provide the Cinder scheduler with hints on where to instantiate a volume. | <pre>object({<br/>    different_host        = optional(list(string))<br/>    same_host             = optional(list(string))<br/>    query                 = optional(string)<br/>    local_to_instance     = optional(string)<br/>    additional_properties = optional(map(any))<br/>  })</pre> | `null` | no |
 | <a name="input_block_device_volume_size"></a> [block\_device\_volume\_size](#input\_block\_device\_volume\_size) | The volume size of block device | `number` | `20` | no |
 | <a name="input_config_drive"></a> [config\_drive](#input\_config\_drive) | Whether to use the config\_drive feature to configure the instance. | `bool` | `true` | no |
 | <a name="input_consistency_group_id"></a> [consistency\_group\_id](#input\_consistency\_group\_id) | The consistency group to place the volume in. | `string` | `null` | no |
@@ -114,7 +114,7 @@ module "test_instance_simple" {
 | <a name="input_power_state"></a> [power\_state](#input\_power\_state) | The VM state. Only 'active', 'shutoff', 'paused' and 'shelved\_offloaded' are supported values. | `string` | `"active"` | no |
 | <a name="input_public_ip_network"></a> [public\_ip\_network](#input\_public\_ip\_network) | The name of the network who give floating IPs | `string` | `null` | no |
 | <a name="input_region"></a> [region](#input\_region) | Region where volume's located. | `string` | `null` | no |
-| <a name="input_scheduler_hints"></a> [scheduler\_hints](#input\_scheduler\_hints) | Provide the Nova scheduler with hints on where to instantiate an instance. | `any` | `null` | no |
+| <a name="input_scheduler_hints"></a> [scheduler\_hints](#input\_scheduler\_hints) | Provide the Nova scheduler with hints on where to instantiate an instance. | <pre>object({<br/>    group                 = optional(string)<br/>    different_host        = optional(list(string))<br/>    same_host             = optional(list(string))<br/>    query                 = optional(list(string))<br/>    target_cell           = optional(string)<br/>    different_cell        = optional(list(string))<br/>    build_near_host_ip    = optional(string)<br/>    additional_properties = optional(map(any))<br/>  })</pre> | `null` | no |
 | <a name="input_snapshot_id"></a> [snapshot\_id](#input\_snapshot\_id) | The snapshot ID from which to create the root volume. Mutually exclusive with source\_vol\_id, backup\_id, image\_id, image\_name. | `string` | `null` | no |
 | <a name="input_source_replica"></a> [source\_replica](#input\_source\_replica) | The volume ID to replicate with. | `string` | `null` | no |
 | <a name="input_source_vol_id"></a> [source\_vol\_id](#input\_source\_vol\_id) | The volume ID from which to create the root volume. Mutually exclusive with snapshot\_id, backup\_id, image\_id, image\_name. | `string` | `null` | no |
@@ -136,10 +136,13 @@ module "test_instance_simple" {
 | <a name="output_all_metadata"></a> [all\_metadata](#output\_all\_metadata) | All metadata key/value pairs associated with the instance. |
 | <a name="output_all_tags"></a> [all\_tags](#output\_all\_tags) | All tags associated with the instance. |
 | <a name="output_availability_info"></a> [availability\_info](#output\_availability\_info) | Availability zone and hints for the instance. |
+| <a name="output_boot_port_ids"></a> [boot\_port\_ids](#output\_boot\_port\_ids) | IDs of ports attached at boot time. |
 | <a name="output_boot_ports"></a> [boot\_ports](#output\_boot\_ports) | Details of ports attached at boot time. |
 | <a name="output_created_at"></a> [created\_at](#output\_created\_at) | The creation time of the instance. |
-| <a name="output_extra_volume_ids"></a> [extra\_volume\_ids](#output\_extra\_volume\_ids) | List of IDs for additional volumes attached to the instance. |
+| <a name="output_extra_volume_attachment_ids"></a> [extra\_volume\_attachment\_ids](#output\_extra\_volume\_attachment\_ids) | List of volume attachment IDs for additional volumes. |
+| <a name="output_extra_volume_ids"></a> [extra\_volume\_ids](#output\_extra\_volume\_ids) | List of attached additional volume IDs. |
 | <a name="output_floating_ips"></a> [floating\_ips](#output\_floating\_ips) | Flat list of floating IP addresses. |
+| <a name="output_hot_port_ids"></a> [hot\_port\_ids](#output\_hot\_port\_ids) | IDs of ports attached after boot (hot-plug). |
 | <a name="output_hot_ports"></a> [hot\_ports](#output\_hot\_ports) | Details of ports attached after boot (hot-plug). |
 | <a name="output_instance_id"></a> [instance\_id](#output\_instance\_id) | Instance ID. |
 | <a name="output_instance_ids"></a> [instance\_ids](#output\_instance\_ids) | Flat list of instance IDs. |

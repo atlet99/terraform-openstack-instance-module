@@ -26,6 +26,13 @@ resource "openstack_blockstorage_volume_v3" "volume_os" {
       additional_properties = lookup(scheduler_hints.value, "additional_properties", null)
     }
   }
+
+  lifecycle {
+    precondition {
+      condition     = length(compact([var.snapshot_id, var.source_vol_id, var.image_id, var.backup_id])) <= 1
+      error_message = "Root volume source is ambiguous: only one of snapshot_id, source_vol_id, image_id, backup_id can be set."
+    }
+  }
 }
 
 # Create boot ports (attached at creation time)
@@ -41,8 +48,12 @@ resource "openstack_networking_port_v2" "boot_ports" {
   dns_name           = var.ports[count.index].dns_name
   qos_policy_id      = var.ports[count.index].qos_policy_id
   mac_address        = var.ports[count.index].mac_address
-  no_fixed_ip        = var.ports[count.index].no_fixed_ip
-  value_specs        = var.ports[count.index].value_specs
+  no_fixed_ip = (
+    var.ports[count.index].no_fixed_ip == true
+    && length(var.ports[count.index].fixed_ips) == 0
+    && var.ports[count.index].subnet_id == null
+  ) ? true : null
+  value_specs = var.ports[count.index].value_specs
 
   dynamic "fixed_ip" {
     for_each = var.ports[count.index].fixed_ips
@@ -103,8 +114,12 @@ resource "openstack_networking_port_v2" "hot_ports" {
   dns_name           = var.hot_ports[count.index].dns_name
   qos_policy_id      = var.hot_ports[count.index].qos_policy_id
   mac_address        = var.hot_ports[count.index].mac_address
-  no_fixed_ip        = var.hot_ports[count.index].no_fixed_ip
-  value_specs        = var.hot_ports[count.index].value_specs
+  no_fixed_ip = (
+    var.hot_ports[count.index].no_fixed_ip == true
+    && length(var.hot_ports[count.index].fixed_ips) == 0
+    && var.hot_ports[count.index].subnet_id == null
+  ) ? true : null
+  value_specs = var.hot_ports[count.index].value_specs
 
   dynamic "fixed_ip" {
     for_each = var.hot_ports[count.index].fixed_ips
@@ -228,6 +243,13 @@ resource "openstack_compute_instance_v2" "instance" {
   }
 
   tags = var.tags
+
+  lifecycle {
+    precondition {
+      condition     = var.network_mode == null || length(var.ports) == 0
+      error_message = "network_mode conflicts with boot ports: set var.ports = [] when network_mode is used."
+    }
+  }
 }
 
 # Attach hot ports after instance creation
@@ -264,4 +286,16 @@ resource "openstack_networking_floatingip_associate_v2" "ipa" {
     ) : (
     length(openstack_networking_port_v2.hot_ports) > 0 ? openstack_networking_port_v2.hot_ports[var.floating_ip_port_index - length(openstack_networking_port_v2.boot_ports)].id : null
   )
+
+  lifecycle {
+    precondition {
+      condition     = length(var.ports) + length(var.hot_ports) > 0
+      error_message = "When public_ip_network is set, define at least one port in var.ports or var.hot_ports."
+    }
+
+    precondition {
+      condition     = var.floating_ip_port_index < length(var.ports) + length(var.hot_ports)
+      error_message = "floating_ip_port_index is out of range for the combined ports list (boot ports first, then hot ports)."
+    }
+  }
 }

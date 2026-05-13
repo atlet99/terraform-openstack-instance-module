@@ -6,10 +6,10 @@ output "instance_ids" {
 
 # Consolidated list of all private IPs (boot + hot ports)
 output "private_ips" {
-  value = concat(
-    [for port in openstack_networking_port_v2.boot_ports : port.fixed_ip[0].ip_address],
-    [for port in openstack_networking_port_v2.hot_ports : port.fixed_ip[0].ip_address]
-  )
+  value = compact(concat(
+    [for port in openstack_networking_port_v2.boot_ports : try(port.fixed_ip[0].ip_address, null)],
+    [for port in openstack_networking_port_v2.hot_ports : try(port.fixed_ip[0].ip_address, null)]
+  ))
   description = "Flat list of the first private IP address for all ports."
 }
 

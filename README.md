@@ -48,20 +48,20 @@ module "test_instance_simple" {
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.5.0 |
 | <a name="requirement_openstack"></a> [openstack](#requirement\_openstack) | ~> 3.2.0 |
 
 ## Providers
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="provider_openstack"></a> [openstack](#provider\_openstack) | 3.2.0 |
 
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [openstack_blockstorage_volume_v3.volume_os](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/latest/docs/resources/blockstorage_volume_v3) | resource |
 | [openstack_compute_instance_v2.instance](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/latest/docs/resources/compute_instance_v2) | resource |
 | [openstack_compute_interface_attach_v2.hot_ports_attach](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/latest/docs/resources/compute_interface_attach_v2) | resource |
@@ -74,7 +74,7 @@ module "test_instance_simple" {
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_admin_pass"></a> [admin\_pass](#input\_admin\_pass) | The administrative password to assign to the server. | `string` | `null` | no |
 | <a name="input_availability_zone"></a> [availability\_zone](#input\_availability\_zone) | AZ where volume's available. | `string` | `null` | no |
 | <a name="input_backup_id"></a> [backup\_id](#input\_backup\_id) | The backup ID from which to create the volume. | `string` | `null` | no |
@@ -126,7 +126,7 @@ module "test_instance_simple" {
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_access_ip_v4"></a> [access\_ip\_v4](#output\_access\_ip\_v4) | The first detected IPv4 address of the instance. |
 | <a name="output_access_ip_v6"></a> [access\_ip\_v6](#output\_access\_ip\_v6) | The first detected IPv6 address of the instance. |
 | <a name="output_admin_pass"></a> [admin\_pass](#output\_admin\_pass) | The administrative password assigned to the server. |

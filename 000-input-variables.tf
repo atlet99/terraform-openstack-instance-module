@@ -87,6 +87,16 @@ variable "ports" {
   }))
   default     = []
   description = "Ports attached at boot time (causes replacement on change). If empty, OpenStack will create a default port."
+
+  validation {
+    condition = alltrue([
+      for p in var.ports : !(
+        p.no_fixed_ip
+        && (length(p.fixed_ips) > 0 || p.subnet_id != null)
+      )
+    ])
+    error_message = "Each item in var.ports must not combine no_fixed_ip=true with fixed_ips or subnet_id."
+  }
 }
 
 variable "hot_ports" {
@@ -126,6 +136,16 @@ variable "hot_ports" {
   }))
   default     = []
   description = "Ports attached after instance creation (hot-plug). Does not cause replacement."
+
+  validation {
+    condition = alltrue([
+      for p in var.hot_ports : !(
+        p.no_fixed_ip
+        && (length(p.fixed_ips) > 0 || p.subnet_id != null)
+      )
+    ])
+    error_message = "Each item in var.hot_ports must not combine no_fixed_ip=true with fixed_ips or subnet_id."
+  }
 }
 
 variable "block_device_volume_size" {
@@ -289,6 +309,11 @@ variable "floating_ip_port_index" {
   type        = number
   default     = 0
   description = "The index of the port to associate the floating IP with (0 for first boot-port, then hot-ports)."
+
+  validation {
+    condition     = floor(var.floating_ip_port_index) == var.floating_ip_port_index && var.floating_ip_port_index >= 0
+    error_message = "floating_ip_port_index must be a non-negative integer."
+  }
 }
 
 variable "config_drive" {
@@ -362,4 +387,9 @@ variable "network_mode" {
   type        = string
   default     = null
   description = "Special string for 'network' option: 'auto' or 'none'. Conflicts with 'ports'."
+
+  validation {
+    condition     = var.network_mode == null ? true : contains(["auto", "none"], lower(var.network_mode))
+    error_message = "network_mode must be null, \"auto\", or \"none\"."
+  }
 }

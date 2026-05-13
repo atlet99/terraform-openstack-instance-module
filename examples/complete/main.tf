@@ -75,7 +75,6 @@ module "complete_instance" {
   block_device_guest_format          = "ext4"
   block_device_disk_bus              = "virtio"
 
-  hypervisor_hostname = "compute-01.example.com"
 
   fip_description = "Public access IP"
 }

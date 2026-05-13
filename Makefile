@@ -1,6 +1,6 @@
 .PHONY: \
 	help check-deps clean \
-	fmt fmt-check init validate validate-matrix \
+	fmt fmt-check init validate validate-matrix check-examples \
 	lint docs \
 	check-all-single check-all-matrix check-all \
 	changelog changelog-preview release tag
@@ -32,6 +32,7 @@ help: ## Show grouped help
 	@echo "  init               Initialize terraform (no backend)"
 	@echo "  validate           Run terraform validate"
 	@echo "  validate-matrix    Run init+validate across TF versions: $(TF_MATRIX_VERSIONS)"
+	@echo "  check-examples     Validate examples across TF versions: $(TF_MATRIX_VERSIONS)"
 	@echo
 	@echo "Quality"
 	@echo "  lint               Run tflint"
@@ -77,6 +78,9 @@ validate: init ## Run terraform validate
 validate-matrix: check-deps ## Run init+validate across Terraform matrix versions
 	@./scripts/validate_matrix.sh $(TF_MATRIX_VERSIONS)
 
+check-examples: check-deps ## Validate examples across Terraform matrix versions
+	@./scripts/check_examples.sh $(TF_MATRIX_VERSIONS)
+
 # -----------------------------------------------------------------------------
 # Quality
 # -----------------------------------------------------------------------------
@@ -89,7 +93,7 @@ docs: check-deps ## Generate documentation with terraform-docs
 
 check-all-single: fmt validate lint docs ## Run checks in active Terraform version
 
-check-all-matrix: fmt validate-matrix lint docs ## Run checks across Terraform matrix
+check-all-matrix: fmt validate-matrix check-examples lint docs ## Run checks across Terraform matrix
 
 check-all: check-all-matrix ## Alias for check-all-matrix
 

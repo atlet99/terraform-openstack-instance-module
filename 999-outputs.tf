@@ -4,6 +4,11 @@ output "instance_ids" {
   description = "Flat list of instance IDs."
 }
 
+output "instance_id" {
+  value       = openstack_compute_instance_v2.instance.id
+  description = "Instance ID."
+}
+
 # Consolidated list of all private IPs (boot + hot ports)
 output "private_ips" {
   value = compact(concat(

@@ -14,13 +14,13 @@ variable "user_data" {
 variable "image_id" {
   type        = string
   default     = null
-  description = "The image's id referenced in openstack"
+  description = "The image ID referenced in OpenStack. Use as one root-volume source (mutually exclusive with image_name, snapshot_id, source_vol_id, backup_id)."
 }
 
 variable "image_name" {
   type        = string
   default     = null
-  description = "The image's name referenced in openstack"
+  description = "The image name referenced in OpenStack (resolved to image ID). Use as one root-volume source (mutually exclusive with image_id, snapshot_id, source_vol_id, backup_id)."
 }
 
 variable "name" {
@@ -97,6 +97,15 @@ variable "ports" {
     ])
     error_message = "Each item in var.ports must not combine no_fixed_ip=true with fixed_ips or subnet_id."
   }
+
+  validation {
+    condition = alltrue(flatten([
+      for p in var.ports : [
+        for ip in p.fixed_ips : ip.subnet_id != null || ip.ip_address != null
+      ]
+    ]))
+    error_message = "Each fixed_ips item in var.ports must contain at least one of subnet_id or ip_address."
+  }
 }
 
 variable "hot_ports" {
@@ -145,6 +154,15 @@ variable "hot_ports" {
       )
     ])
     error_message = "Each item in var.hot_ports must not combine no_fixed_ip=true with fixed_ips or subnet_id."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for p in var.hot_ports : [
+        for ip in p.fixed_ips : ip.subnet_id != null || ip.ip_address != null
+      ]
+    ]))
+    error_message = "Each fixed_ips item in var.hot_ports must contain at least one of subnet_id or ip_address."
   }
 }
 
@@ -198,6 +216,11 @@ variable "power_state" {
   type        = string
   default     = "active"
   description = "The VM state. Only 'active', 'shutoff', 'paused' and 'shelved_offloaded' are supported values."
+
+  validation {
+    condition     = contains(["active", "shutoff", "paused", "shelved_offloaded"], lower(var.power_state))
+    error_message = "power_state must be one of: active, shutoff, paused, shelved_offloaded."
+  }
 }
 
 variable "force_delete" {
@@ -227,19 +250,19 @@ variable "block_device_metadata" {
 variable "snapshot_id" {
   type        = string
   default     = null
-  description = "The snapshot ID from which to create the volume."
+  description = "The snapshot ID from which to create the root volume. Mutually exclusive with source_vol_id, backup_id, image_id, image_name."
 }
 
 variable "source_vol_id" {
   type        = string
   default     = null
-  description = "The volume ID from which to create the volume."
+  description = "The volume ID from which to create the root volume. Mutually exclusive with snapshot_id, backup_id, image_id, image_name."
 }
 
 variable "backup_id" {
   type        = string
   default     = null
-  description = "The backup ID from which to create the volume."
+  description = "The backup ID from which to create the root volume. Mutually exclusive with snapshot_id, source_vol_id, image_id, image_name."
 }
 
 variable "block_device_scheduler_hints" {
@@ -263,7 +286,24 @@ variable "fip_dns_name" {
 variable "fip_dns_domain" {
   type        = string
   default     = null
-  description = "The floating IP DNS domain."
+  description = "The floating IP DNS domain. Must be empty or end with a dot (for example: example.com.)."
+
+  validation {
+    condition     = var.fip_dns_domain == null ? true : var.fip_dns_domain == "" || can(regex("\\.$", var.fip_dns_domain))
+    error_message = "fip_dns_domain must be empty or end with a dot (for example: example.com.)."
+  }
+}
+
+variable "fip_subnet_ids" {
+  type        = list(string)
+  default     = []
+  description = "Optional list of subnet IDs for floating IP allocation. The first subnet ID is used by the provider when multiple are passed."
+}
+
+variable "fip_fixed_ip" {
+  type        = string
+  default     = null
+  description = "Optional fixed IP of the target port to associate with the floating IP."
 }
 
 variable "instance_availability_zone" {
@@ -362,7 +402,12 @@ variable "source_replica" {
 variable "volume_retype_policy" {
   type        = string
   default     = null
-  description = "Migration policy when changing volume_type. 'never' or 'on-demand'."
+  description = "Migration policy when changing volume_type. Allowed values: null, 'never', 'on-demand'."
+
+  validation {
+    condition     = var.volume_retype_policy == null ? true : contains(["never", "on-demand"], lower(var.volume_retype_policy))
+    error_message = "volume_retype_policy must be null, \"never\", or \"on-demand\"."
+  }
 }
 
 variable "block_device_guest_format" {
@@ -386,7 +431,7 @@ variable "block_device_disk_bus" {
 variable "network_mode" {
   type        = string
   default     = null
-  description = "Special string for 'network' option: 'auto' or 'none'. Conflicts with 'ports'."
+  description = "Special string for network option: 'auto' or 'none'. Conflicts with boot ports (var.ports)."
 
   validation {
     condition     = var.network_mode == null ? true : contains(["auto", "none"], lower(var.network_mode))

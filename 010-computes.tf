@@ -1,9 +1,14 @@
+data "openstack_images_image_v2" "boot_image_by_name" {
+  count = var.image_id == null && var.image_name != null ? 1 : 0
+  name  = var.image_name
+}
+
 # Create volume for instance boot
 resource "openstack_blockstorage_volume_v3" "volume_os" {
   name                 = var.name
   size                 = var.block_device_volume_size
   volume_type          = var.volume_type
-  image_id             = var.image_id != null ? var.image_id : null
+  image_id             = var.image_id != null ? var.image_id : (var.image_name != null ? data.openstack_images_image_v2.boot_image_by_name[0].id : null)
   enable_online_resize = var.enable_online_resize
   region               = var.region == null ? null : var.region
   availability_zone    = var.availability_zone == null ? null : var.availability_zone
@@ -29,8 +34,8 @@ resource "openstack_blockstorage_volume_v3" "volume_os" {
 
   lifecycle {
     precondition {
-      condition     = length(compact([var.snapshot_id, var.source_vol_id, var.image_id, var.backup_id])) <= 1
-      error_message = "Root volume source is ambiguous: only one of snapshot_id, source_vol_id, image_id, backup_id can be set."
+      condition     = length(compact([var.snapshot_id, var.source_vol_id, var.backup_id, var.image_id, var.image_name])) == 1
+      error_message = "Root volume source must be set exactly once: use one of snapshot_id, source_vol_id, backup_id, image_id, image_name."
     }
   }
 }
@@ -171,8 +176,8 @@ resource "openstack_compute_instance_v2" "instance" {
   name         = var.name
   flavor_name  = var.flavor_name
   flavor_id    = var.flavor_id
-  image_id     = var.image_id
-  image_name   = var.image_name
+  image_id     = null
+  image_name   = null
   network_mode = var.network_mode
 
   block_device {
@@ -249,6 +254,16 @@ resource "openstack_compute_instance_v2" "instance" {
       condition     = var.network_mode == null || length(var.ports) == 0
       error_message = "network_mode conflicts with boot ports: set var.ports = [] when network_mode is used."
     }
+
+    precondition {
+      condition     = !(var.hypervisor_hostname != null && length(var.personalities) > 0)
+      error_message = "hypervisor_hostname conflicts with personalities. Use only one of them."
+    }
+
+    precondition {
+      condition     = !(var.instance_availability_zone != null && var.instance_availability_zone_hints != null)
+      error_message = "instance_availability_zone conflicts with instance_availability_zone_hints. Use only one of them."
+    }
   }
 }
 
@@ -275,6 +290,8 @@ resource "openstack_networking_floatingip_v2" "ip" {
   description = var.fip_description
   dns_name    = var.fip_dns_name
   dns_domain  = var.fip_dns_domain
+  fixed_ip    = var.fip_fixed_ip
+  subnet_ids  = length(var.fip_subnet_ids) > 0 ? var.fip_subnet_ids : null
 }
 
 # Attach floating IP

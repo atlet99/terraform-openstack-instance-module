@@ -1,58 +1,90 @@
-.PHONY: fmt validate docs lint changelog release tag clean help check-deps check-all
+.PHONY: \
+	help check-deps clean \
+	fmt fmt-check init validate validate-matrix check-examples \
+	lint docs docs-check \
+	check-all-single check-all-matrix check-all \
+	changelog changelog-preview release tag
 
 SHELL := /bin/bash
+.DEFAULT_GOAL := help
 
-# Current version from the latest git tag (strip leading 'v')
+# -----------------------------------------------------------------------------
+# Metadata
+# -----------------------------------------------------------------------------
 CURRENT_VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0")
-DATE := $(shell date +%Y-%m-%d)
+NEXT_VERSION := $(shell git cliff --bumped-version 2>/dev/null || echo "v1.0.1")
 
-# Repository URL
-REPO_URL := https://github.com/atlet99/terraform-openstack-instance-module
-
-# Required binaries
-REQUIRED_BINS := terraform tflint terraform-docs git git-cliff tfenv
-
-# Use tfenv if available, otherwise fallback to standard terraform
+# -----------------------------------------------------------------------------
+# Tooling
+# -----------------------------------------------------------------------------
 TERRAFORM := $(shell if command -v tfenv >/dev/null 2>&1; then echo "tfenv exec"; else echo "terraform"; fi)
+TF_MATRIX_VERSIONS ?= 1.5.0 1.5.7 1.11.0
 
-###############################################################################
-# Helpers
-###############################################################################
+# -----------------------------------------------------------------------------
+# Help
+# -----------------------------------------------------------------------------
+help: ## Show grouped help
+	@echo "Usage: make <target>"
+	@echo
+	@echo "Terraform"
+	@echo "  fmt                Run terraform fmt recursively"
+	@echo "  fmt-check          Check terraform formatting (fails on diff)"
+	@echo "  init               Initialize terraform (no backend)"
+	@echo "  validate           Run terraform validate"
+	@echo "  validate-matrix    Run init+validate across TF versions: $(TF_MATRIX_VERSIONS)"
+	@echo "  check-examples     Validate examples across TF versions: $(TF_MATRIX_VERSIONS)"
+	@echo
+	@echo "Quality"
+	@echo "  lint               Run tflint"
+	@echo "  docs               Generate README docs with terraform-docs"
+	@echo "  docs-check         Verify README is in sync with terraform-docs"
+	@echo "  check-all-single   Run checks in active Terraform version"
+	@echo "  check-all-matrix   Run checks across Terraform version matrix"
+	@echo "  check-all          Alias for check-all-matrix"
+	@echo
+	@echo "Release"
+	@echo "  changelog          Generate CHANGELOG.md from git history"
+	@echo "  changelog-preview  Preview next version and unreleased changes"
+	@echo "  release            Create release commit + tag (VERSION=x.y.z optional)"
+	@echo "  tag                Create tag workflow commit + tag (VERSION=x.y.z optional)"
+	@echo
+	@echo "Maintenance"
+	@echo "  check-deps         Verify required tools are installed"
+	@echo "  clean              Remove terraform artifacts"
 
-help: ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+# -----------------------------------------------------------------------------
+# Maintenance
+# -----------------------------------------------------------------------------
+check-deps: ## Verify required tools are installed
+	@./scripts/check_deps.sh
 
-check-deps: ## Check that all required tools are installed
-	@for bin in $(REQUIRED_BINS); do \
-		if ! command -v $$bin &>/dev/null; then \
-			echo "ERROR: '$$bin' is not installed."; \
-			case $$bin in \
-				terraform)      echo "  Install: https://developer.hashicorp.com/terraform/install" ;; \
-				tflint)         echo "  Install: brew install tflint" ;; \
-				terraform-docs) echo "  Install: brew install terraform-docs" ;; \
-				git)            echo "  Install: brew install git" ;; \
-			esac; \
-			exit 1; \
-		fi; \
-	done
-	@echo "All dependencies are available."
+clean: ## Remove terraform artifacts
+	rm -rf .terraform .terraform.lock.hcl
 
-###############################################################################
+# -----------------------------------------------------------------------------
 # Terraform
-###############################################################################
-
+# -----------------------------------------------------------------------------
 fmt: check-deps ## Run terraform fmt recursively
 	$(TERRAFORM) fmt -recursive
 
-validate: check-deps ## Run terraform init + validate
+fmt-check: check-deps ## Check terraform formatting (fails on diff)
+	$(TERRAFORM) fmt -recursive -check -diff
+
+init: check-deps ## Initialize terraform (no backend)
 	$(TERRAFORM) init -backend=false -input=false
+
+validate: init ## Run terraform validate
 	$(TERRAFORM) validate
 
-###############################################################################
-# Linting & Docs
-###############################################################################
+validate-matrix: check-deps ## Run init+validate across Terraform matrix versions
+	@./scripts/validate_matrix.sh $(TF_MATRIX_VERSIONS)
 
+check-examples: check-deps ## Validate examples across Terraform matrix versions
+	@./scripts/check_examples.sh $(TF_MATRIX_VERSIONS)
+
+# -----------------------------------------------------------------------------
+# Quality
+# -----------------------------------------------------------------------------
 lint: check-deps ## Run tflint
 	tflint --init
 	tflint
@@ -60,58 +92,36 @@ lint: check-deps ## Run tflint
 docs: check-deps ## Generate documentation with terraform-docs
 	terraform-docs .
 
-check-all: fmt validate lint docs ## Run all checks: fmt, validate, lint, docs
+docs-check: check-deps ## Verify README is in sync with terraform-docs
+	@before="$$(shasum README.md | awk '{print $$1}')"; \
+	terraform-docs .; \
+	after="$$(shasum README.md | awk '{print $$1}')"; \
+	if [ "$$before" != "$$after" ]; then \
+		echo "ERROR: README.md is not up to date. Run 'make docs' and commit the changes."; \
+		exit 1; \
+	fi
 
-###############################################################################
-# Changelog & Release
-###############################################################################
+check-all-single: fmt validate lint docs-check ## Run checks in active Terraform version
 
+check-all-matrix: fmt validate-matrix check-examples lint docs-check ## Run checks across Terraform matrix
+
+check-all: check-all-matrix ## Alias for check-all-matrix
+
+# -----------------------------------------------------------------------------
+# Release
+# -----------------------------------------------------------------------------
 changelog: check-deps ## Generate CHANGELOG.md from git commits
 	@echo "Generating CHANGELOG.md with git-cliff..."
 	@git cliff -o CHANGELOG.md
 	@echo "Done. Review CHANGELOG.md and commit."
 
-# Next version automatically determined by git-cliff
-NEXT_VERSION := $(shell git cliff --bumped-version 2>/dev/null || echo "v1.0.1")
-
-changelog-preview: check-deps ## Preview the next version and unreleased changes
+changelog-preview: check-deps ## Preview next version and unreleased changes
 	@echo "Next version: $(NEXT_VERSION)"
 	@echo "Unreleased changes:"
 	@git cliff --unreleased --strip all
 
-release: check-deps ## Create a release: make release [VERSION=x.y.z]
-	@version="$(VERSION)"; \
-	if [ -z "$$version" ]; then \
-		version="$(NEXT_VERSION)"; \
-	fi; \
-	version=$${version#v}; \
-	echo "Releasing v$$version (current: v$(CURRENT_VERSION))..."; \
-	sed -i.bak -e "s/version = \".*\"/version = \"$$version\"/g" README.md; \
-	rm -f README.md.bak; \
-	git cliff --bump --tag "v$$version" -o CHANGELOG.md; \
-	git add CHANGELOG.md README.md; \
-	git commit -m "chore: release v$$version"; \
-	git tag -a "v$$version" -m "Release v$$version"; \
-	echo "Done. Run 'git push && git push --tags' to publish."
+release: check-deps ## Create release commit + tag (VERSION=x.y.z optional)
+	@./scripts/release.sh release "$(VERSION)" "$(NEXT_VERSION)" "$(CURRENT_VERSION)"
 
-tag: check-deps ## Create a tag with CHANGELOG update: make tag [VERSION=x.y.z]
-	@version="$(VERSION)"; \
-	if [ -z "$$version" ]; then \
-		version="$(NEXT_VERSION)"; \
-	fi; \
-	version=$${version#v}; \
-	echo "Creating tag v$$version (current: v$(CURRENT_VERSION))..."; \
-	sed -i.bak -e "s/version = \".*\"/version = \"$$version\"/g" README.md; \
-	rm -f README.md.bak; \
-	git cliff --bump --tag "v$$version" -o CHANGELOG.md; \
-	git add CHANGELOG.md README.md; \
-	git commit -m "chore: release v$$version"; \
-	git tag -a "v$$version" -m "Release v$$version"; \
-	echo "Tag v$$version created. Run 'git push && git push --tags' to publish."
-
-###############################################################################
-# Cleanup
-###############################################################################
-
-clean: ## Remove terraform init artifacts
-	rm -rf .terraform .terraform.lock.hcl
+tag: check-deps ## Create tag workflow commit + tag (VERSION=x.y.z optional)
+	@./scripts/release.sh tag "$(VERSION)" "$(NEXT_VERSION)" "$(CURRENT_VERSION)"

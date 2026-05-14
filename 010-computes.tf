@@ -40,7 +40,7 @@ resource "openstack_blockstorage_volume_v3" "volume_os" {
   region               = var.region == null ? null : var.region
   availability_zone    = var.availability_zone == null ? null : var.availability_zone
   description          = var.block_device_description
-  metadata             = var.block_device_metadata
+  metadata             = merge(var.block_device_metadata, var.boot_volume_metadata)
   snapshot_id          = var.snapshot_id
   source_vol_id        = var.source_vol_id
   backup_id            = var.backup_id
@@ -60,6 +60,15 @@ resource "openstack_blockstorage_volume_v3" "volume_os" {
   }
 
   lifecycle {
+    ignore_changes = [
+      metadata,
+    ]
+
+    precondition {
+      condition     = var.ignore_boot_volume_metadata_changes == true
+      error_message = "ignore_boot_volume_metadata_changes=false is not supported in this module version."
+    }
+
     precondition {
       condition     = length(compact([var.snapshot_id, var.source_vol_id, var.backup_id, var.image_id, var.image_name])) == 1
       error_message = "Root volume source must be set exactly once: use one of snapshot_id, source_vol_id, backup_id, image_id, image_name."
@@ -225,7 +234,7 @@ resource "openstack_compute_instance_v2" "instance" {
   }
 
   # Metadata block
-  metadata = { for key, value in var.metadata : key => value if value != null }
+  metadata = { for key, value in merge(var.metadata, var.instance_metadata) : key => value if value != null }
 
   # Scheduler hints
   dynamic "scheduler_hints" {

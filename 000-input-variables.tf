@@ -99,6 +99,13 @@ variable "ports" {
   }
 
   validation {
+    condition = alltrue([
+      for p in var.ports : !(p.no_security_groups && length(p.security_group_ids) > 0)
+    ])
+    error_message = "Each item in var.ports must not combine no_security_groups=true with non-empty security_group_ids."
+  }
+
+  validation {
     condition = alltrue(flatten([
       for p in var.ports : [
         for ip in p.fixed_ips : ip.subnet_id != null || ip.ip_address != null
@@ -157,6 +164,13 @@ variable "hot_ports" {
   }
 
   validation {
+    condition = alltrue([
+      for p in var.hot_ports : !(p.no_security_groups && length(p.security_group_ids) > 0)
+    ])
+    error_message = "Each item in var.hot_ports must not combine no_security_groups=true with non-empty security_group_ids."
+  }
+
+  validation {
     condition = alltrue(flatten([
       for p in var.hot_ports : [
         for ip in p.fixed_ips : ip.subnet_id != null || ip.ip_address != null
@@ -197,6 +211,12 @@ variable "tags" {
 variable "metadata" {
   type        = map(string)
   description = "Metadata for the OpenStack instance."
+  default     = {}
+}
+
+variable "instance_metadata" {
+  type        = map(string)
+  description = "Additional metadata for the OpenStack instance. Merged over `metadata`."
   default     = {}
 }
 
@@ -245,6 +265,23 @@ variable "block_device_metadata" {
   type        = map(string)
   default     = {}
   description = "Metadata key/value pairs to associate with the volume."
+}
+
+variable "boot_volume_metadata" {
+  type        = map(string)
+  default     = {}
+  description = "Additional metadata for the boot volume. Merged over `block_device_metadata`."
+}
+
+variable "ignore_boot_volume_metadata_changes" {
+  type        = bool
+  default     = true
+  description = "Ignore boot volume metadata drift caused by provider/platform-managed keys."
+
+  validation {
+    condition     = var.ignore_boot_volume_metadata_changes == true
+    error_message = "Currently only `true` is supported for ignore_boot_volume_metadata_changes due lifecycle ignore_changes limitations."
+  }
 }
 
 variable "snapshot_id" {

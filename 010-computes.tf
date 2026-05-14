@@ -23,6 +23,13 @@ locals {
     ) : (
     length(openstack_networking_port_v2.hot_ports) > 0 ? openstack_networking_port_v2.hot_ports[var.floating_ip_port_index - length(openstack_networking_port_v2.boot_ports)].id : null
   )
+  fip_selected_port_fixed_ips = (
+    local.total_ports == 0 || var.floating_ip_port_index >= local.total_ports
+    ) ? [] : (
+    var.floating_ip_port_index < length(openstack_networking_port_v2.boot_ports)
+    ? openstack_networking_port_v2.boot_ports[var.floating_ip_port_index].fixed_ip[*].ip_address
+    : openstack_networking_port_v2.hot_ports[var.floating_ip_port_index - length(openstack_networking_port_v2.boot_ports)].fixed_ip[*].ip_address
+  )
 }
 
 data "openstack_images_image_v2" "boot_image_by_name" {
@@ -40,7 +47,7 @@ resource "openstack_blockstorage_volume_v3" "volume_os" {
   region               = var.region == null ? null : var.region
   availability_zone    = var.availability_zone == null ? null : var.availability_zone
   description          = var.block_device_description
-  metadata             = var.block_device_metadata
+  metadata             = merge(var.block_device_metadata, var.boot_volume_metadata)
   snapshot_id          = var.snapshot_id
   source_vol_id        = var.source_vol_id
   backup_id            = var.backup_id
@@ -60,6 +67,15 @@ resource "openstack_blockstorage_volume_v3" "volume_os" {
   }
 
   lifecycle {
+    ignore_changes = [
+      metadata,
+    ]
+
+    precondition {
+      condition     = var.ignore_boot_volume_metadata_changes == true
+      error_message = "ignore_boot_volume_metadata_changes=false is not supported in this module version."
+    }
+
     precondition {
       condition     = length(compact([var.snapshot_id, var.source_vol_id, var.backup_id, var.image_id, var.image_name])) == 1
       error_message = "Root volume source must be set exactly once: use one of snapshot_id, source_vol_id, backup_id, image_id, image_name."
@@ -225,7 +241,7 @@ resource "openstack_compute_instance_v2" "instance" {
   }
 
   # Metadata block
-  metadata = { for key, value in var.metadata : key => value if value != null }
+  metadata = { for key, value in merge(var.metadata, var.instance_metadata) : key => value if value != null }
 
   # Scheduler hints
   dynamic "scheduler_hints" {
@@ -329,6 +345,11 @@ resource "openstack_networking_floatingip_associate_v2" "ipa" {
     precondition {
       condition     = var.floating_ip_port_index < local.total_ports
       error_message = "floating_ip_port_index is out of range for the combined ports list (boot ports first, then hot ports)."
+    }
+
+    precondition {
+      condition     = var.fip_fixed_ip == null || contains(local.fip_selected_port_fixed_ips, var.fip_fixed_ip)
+      error_message = "fip_fixed_ip must belong to the fixed IPs of the selected port (floating_ip_port_index)."
     }
   }
 }

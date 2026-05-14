@@ -104,6 +104,11 @@ output "root_volume_id" {
   description = "The ID of the instance boot volume."
 }
 
+output "root_volume_metadata" {
+  value       = openstack_blockstorage_volume_v3.volume_os.metadata
+  description = "Metadata returned by OpenStack for the boot volume, including platform-managed keys."
+}
+
 # Output for extra volume attachments
 output "extra_volume_ids" {
   value       = openstack_compute_volume_attach_v2.extra_volumes[*].volume_id

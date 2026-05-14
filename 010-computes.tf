@@ -72,12 +72,12 @@ resource "openstack_blockstorage_volume_v3" "volume_os" {
     ]
 
     precondition {
-      condition     = var.ignore_boot_volume_metadata_changes == true
+      condition     = !var.strict_validations || var.ignore_boot_volume_metadata_changes == true
       error_message = "ignore_boot_volume_metadata_changes=false is not supported in this module version."
     }
 
     precondition {
-      condition     = length(compact([var.snapshot_id, var.source_vol_id, var.backup_id, var.image_id, var.image_name])) == 1
+      condition     = !var.strict_validations || length(compact([var.snapshot_id, var.source_vol_id, var.backup_id, var.image_id, var.image_name])) == 1
       error_message = "Root volume source must be set exactly once: use one of snapshot_id, source_vol_id, backup_id, image_id, image_name."
     }
   }
@@ -287,17 +287,17 @@ resource "openstack_compute_instance_v2" "instance" {
 
   lifecycle {
     precondition {
-      condition     = var.network_mode == null || length(var.ports) == 0
+      condition     = !var.strict_validations || var.network_mode == null || length(var.ports) == 0
       error_message = "network_mode conflicts with boot ports: set var.ports = [] when network_mode is used."
     }
 
     precondition {
-      condition     = !(var.hypervisor_hostname != null && length(var.personalities) > 0)
+      condition     = !var.strict_validations || !(var.hypervisor_hostname != null && length(var.personalities) > 0)
       error_message = "hypervisor_hostname conflicts with personalities. Use only one of them."
     }
 
     precondition {
-      condition     = !(var.instance_availability_zone != null && var.instance_availability_zone_hints != null)
+      condition     = !var.strict_validations || !(var.instance_availability_zone != null && var.instance_availability_zone_hints != null)
       error_message = "instance_availability_zone conflicts with instance_availability_zone_hints. Use only one of them."
     }
   }
@@ -338,17 +338,17 @@ resource "openstack_networking_floatingip_associate_v2" "ipa" {
 
   lifecycle {
     precondition {
-      condition     = local.total_ports > 0
+      condition     = !var.strict_validations || local.total_ports > 0
       error_message = "When public_ip_network is set, define at least one port in var.ports or var.hot_ports."
     }
 
     precondition {
-      condition     = var.floating_ip_port_index < local.total_ports
+      condition     = !var.strict_validations || var.floating_ip_port_index < local.total_ports
       error_message = "floating_ip_port_index is out of range for the combined ports list (boot ports first, then hot ports)."
     }
 
     precondition {
-      condition     = var.fip_fixed_ip == null || contains(local.fip_selected_port_fixed_ips, var.fip_fixed_ip)
+      condition     = !var.strict_validations || var.fip_fixed_ip == null || contains(local.fip_selected_port_fixed_ips, var.fip_fixed_ip)
       error_message = "fip_fixed_ip must belong to the fixed IPs of the selected port (floating_ip_port_index)."
     }
   }

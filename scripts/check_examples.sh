@@ -6,7 +6,10 @@ if [[ $# -eq 0 ]]; then
   exit 1
 fi
 
-examples=("examples/simple" "examples/complete" "examples/integration")
+examples=()
+while IFS= read -r ex; do
+  examples+=("$ex")
+done < <(find examples -mindepth 1 -maxdepth 1 -type d | sort)
 
 for version in "$@"; do
   for ex in "${examples[@]}"; do

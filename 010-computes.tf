@@ -23,6 +23,13 @@ locals {
     ) : (
     length(openstack_networking_port_v2.hot_ports) > 0 ? openstack_networking_port_v2.hot_ports[var.floating_ip_port_index - length(openstack_networking_port_v2.boot_ports)].id : null
   )
+  fip_selected_port_fixed_ips = (
+    local.total_ports == 0 || var.floating_ip_port_index >= local.total_ports
+    ) ? [] : (
+    var.floating_ip_port_index < length(openstack_networking_port_v2.boot_ports)
+    ? openstack_networking_port_v2.boot_ports[var.floating_ip_port_index].fixed_ip[*].ip_address
+    : openstack_networking_port_v2.hot_ports[var.floating_ip_port_index - length(openstack_networking_port_v2.boot_ports)].fixed_ip[*].ip_address
+  )
 }
 
 data "openstack_images_image_v2" "boot_image_by_name" {
@@ -338,6 +345,11 @@ resource "openstack_networking_floatingip_associate_v2" "ipa" {
     precondition {
       condition     = var.floating_ip_port_index < local.total_ports
       error_message = "floating_ip_port_index is out of range for the combined ports list (boot ports first, then hot ports)."
+    }
+
+    precondition {
+      condition     = var.fip_fixed_ip == null || contains(local.fip_selected_port_fixed_ips, var.fip_fixed_ip)
+      error_message = "fip_fixed_ip must belong to the fixed IPs of the selected port (floating_ip_port_index)."
     }
   }
 }

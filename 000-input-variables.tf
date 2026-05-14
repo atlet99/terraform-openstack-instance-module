@@ -99,6 +99,13 @@ variable "ports" {
   }
 
   validation {
+    condition = alltrue([
+      for p in var.ports : !(p.no_security_groups && length(p.security_group_ids) > 0)
+    ])
+    error_message = "Each item in var.ports must not combine no_security_groups=true with non-empty security_group_ids."
+  }
+
+  validation {
     condition = alltrue(flatten([
       for p in var.ports : [
         for ip in p.fixed_ips : ip.subnet_id != null || ip.ip_address != null
@@ -154,6 +161,13 @@ variable "hot_ports" {
       )
     ])
     error_message = "Each item in var.hot_ports must not combine no_fixed_ip=true with fixed_ips or subnet_id."
+  }
+
+  validation {
+    condition = alltrue([
+      for p in var.hot_ports : !(p.no_security_groups && length(p.security_group_ids) > 0)
+    ])
+    error_message = "Each item in var.hot_ports must not combine no_security_groups=true with non-empty security_group_ids."
   }
 
   validation {

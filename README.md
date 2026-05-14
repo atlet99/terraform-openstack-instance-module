@@ -153,5 +153,6 @@ module "test_instance_simple" {
 | <a name="output_instance_metadata"></a> [instance\_metadata](#output\_instance\_metadata) | The metadata associated with the instance. |
 | <a name="output_private_ips"></a> [private\_ips](#output\_private\_ips) | Flat list of the first private IP address for all ports. |
 | <a name="output_root_volume_id"></a> [root\_volume\_id](#output\_root\_volume\_id) | The ID of the instance boot volume. |
+| <a name="output_root_volume_metadata"></a> [root\_volume\_metadata](#output\_root\_volume\_metadata) | Metadata returned by OpenStack for the boot volume, including platform-managed keys. |
 | <a name="output_updated_at"></a> [updated\_at](#output\_updated\_at) | The time when the instance was last updated. |
 <!-- END_TF_DOCS -->

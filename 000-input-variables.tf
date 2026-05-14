@@ -50,6 +50,12 @@ EOF
   default     = null
 }
 
+variable "strict_validations" {
+  type        = bool
+  default     = true
+  description = "Enable strict module-level validations and preconditions. Disable only for backward-compatibility troubleshooting."
+}
+
 variable "ports" {
   type = list(object({
     name               = string

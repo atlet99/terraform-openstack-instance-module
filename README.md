@@ -44,6 +44,29 @@ module "test_instance_simple" {
 	server_groups = ["web"]
 }
 ```
+
+## Root Volume Source Contract
+
+For root volume creation, set exactly one source input:
+
+- `image_id`
+- `image_name`
+- `snapshot_id`
+- `source_vol_id`
+- `backup_id`
+
+Any other combination is invalid in strict mode and can fail in provider/runtime behavior.
+
+## Output Contract
+
+Stable outputs intended for cross-module integration:
+
+- `instance_id`
+- `private_ips`
+- `floating_ips`
+- `root_volume_id`
+
+Extended outputs (`instance_info`, `all_metadata`, `all_tags`, timestamps, etc.) are best-effort and may evolve over time.
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
@@ -122,6 +145,7 @@ module "test_instance_simple" {
 | <a name="input_source_replica"></a> [source\_replica](#input\_source\_replica) | The volume ID to replicate with. | `string` | `null` | no |
 | <a name="input_source_vol_id"></a> [source\_vol\_id](#input\_source\_vol\_id) | The volume ID from which to create the root volume. Mutually exclusive with snapshot\_id, backup\_id, image\_id, image\_name. | `string` | `null` | no |
 | <a name="input_stop_before_destroy"></a> [stop\_before\_destroy](#input\_stop\_before\_destroy) | Whether to try stop instance gracefully before destroying it. | `bool` | `false` | no |
+| <a name="input_strict_validations"></a> [strict\_validations](#input\_strict\_validations) | Enable strict module-level validations and preconditions. Disable only for backward-compatibility troubleshooting. | `bool` | `true` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | The instances tags | `list(string)` | `[]` | no |
 | <a name="input_user_data"></a> [user\_data](#input\_user\_data) | The user data for instance | `string` | `null` | no |
 | <a name="input_vendor_options"></a> [vendor\_options](#input\_vendor\_options) | Vendor-specific options for the instance. | <pre>object({<br/>    ignore_resize_confirmation  = optional(bool, false)<br/>    detach_ports_before_destroy = optional(bool, false)<br/>  })</pre> | `null` | no |
